@@ -1,4 +1,5 @@
-type Options = {
+import { Client } from '@elastic/elasticsearch';
+type ElasticsearchStoreOptions = {
     debug: boolean;
     map?: any;
     index: {
@@ -26,17 +27,16 @@ type Options = {
             size: number;
         };
     };
-    aws: any;
-    opensearch: any;
+    elasticsearch: {
+        node: string;
+    };
 };
-export type OpensearchStoreOptions = Partial<Options>;
-declare function OpensearchStore(this: any, options: Options): {
+declare function ElasticsearchStore(this: any, options: ElasticsearchStoreOptions): {
     name: string;
-    tag: any;
     exportmap: {
         native: () => {
-            client: any;
+            client: Client;
         };
     };
 };
-export default OpensearchStore;
+export default ElasticsearchStore;
