@@ -15,7 +15,7 @@ async function run() {
 
     // Create an index with a vector field
     await client.indices.create({
-      index: 'vector-index', // Consider a different index name to avoid conflicts
+      index: 'vector-index', 
       body: {
         mappings: {
           properties: {
@@ -23,12 +23,12 @@ async function run() {
             content: { type: 'text' },
             vector: {
               type: 'dense_vector',
-              dims: 128  // Specify the dimensionality of the vector
+              dims: 128
             }
           }
         }
       }
-    }, { ignore: [400] });  // Ignore index already exists message
+    }, { ignore: [400] }); 
 
     console.log('Index with vector field created or already exists.');
 
@@ -36,13 +36,13 @@ async function run() {
     const doc = {
       title: 'Test Title',
       content: 'Hello, Elasticsearch!',
-      vector: Array(128).fill(0.5)  // Example vector data, modify as needed
+      vector: Array(128).fill(0.5) 
     };
 
     const { body: indexResponse } = await client.index({
       index: 'vector-index',
       body: doc,
-      refresh: true  // Make sure the document is searchable immediately after indexing
+      refresh: true  
     });
 
     console.log('Document indexed:', indexResponse);

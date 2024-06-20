@@ -50,7 +50,7 @@ function ElasticsearchStore(this: any, options: ElasticsearchStoreOptions) {
       // Mapping fields according to the schema
       const document = {
         ...body,
-        vector: body.vector  // Assuming vector data is directly passed
+        vector: body.vector 
       };
 
       try {
@@ -82,10 +82,10 @@ function ElasticsearchStore(this: any, options: ElasticsearchStoreOptions) {
             ent.id = body._id
             reply(ent)
         } else {
-          reply(null, null); // Make sure you handle not found correctly
+          reply(null, null);
         }
       } catch (err: any) {
-        console.error("Failed to load document:", err); // Log the error
+        console.error("Failed to load document:", err);
         reply(err);
       }
     },
@@ -151,7 +151,6 @@ function ElasticsearchStore(this: any, options: ElasticsearchStoreOptions) {
       reply()
     },
 
-    // TODO: obsolete - remove from seneca entity
     native: function (this: any, _msg: any, reply: any) {
       reply(null, {
         client: () => client,
