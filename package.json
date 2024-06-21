@@ -1,10 +1,10 @@
 {
-  "name": "@seneca/Elastic-store",
+  "name": "@seneca/ElasticStore",
   "version": "0.0.1",
   "description": "Seneca Elastic data storage plugin.",
-  "main": "dist/ElasticsearchStore.js",
+  "main": "dist/ElasticSearchStore.js",
   "type": "commonjs",
-  "types": "dist/ElasticsearchStore.d.ts",
+  "types": "dist/ElasticSearchStore.d.ts",
   "license": "MIT",
   "author": "Richard Rodger (http://richardrodger.com)",
   "contributors": [
@@ -14,6 +14,7 @@
     "test": "jest --coverage",
     "test-some": "jest -t",
     "test-watch": "jest --coverage --watchAll",
+    "create-index": "node ./test/create_index.js",
     "watch": "tsc -w -d",
     "build": "tsc -d",
     "doc": "seneca-doc -p seneca-entity",
