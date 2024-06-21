@@ -118,12 +118,26 @@ This store is an in memory store and as such does not require the need of a nati
 The [Senecajs org][] encourages open participation. If you feel you can help in any way, be it with
 documentation, examples, extra testing, or new features please get in touch.
 
-## Test
-To run tests, simply use npm:
+## Test         
+To run tests locally, make sure you have a '.env.local' file in the format:                 
+ ```         
+ ELASTICSEARCH_NODE=http://localhost:9200
+ ELASTICSEARCH_INDEX=vector_index
+ ```
 
-```sh
-npm run test
-```
+ Also, you need Docker installed on your machine. Pull the Elastic Docker image from the hub and run the container. You can do this by running the script:
+ ```sh         
+ ./test/setup.sh        
+  ```
+ After that, create the index in your local image:
+ ```sh         
+ npm run create-index         
+ ```
+ And to run the tests, use:
+ ```sh         
+ npm run test         
+ ```         
+
 
 ## License
 Copyright (c) 2015-2016, Richard Rodger and other contributors.
