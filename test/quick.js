@@ -35,4 +35,4 @@ async function run() {
   console.log('List of entities:', list0);
 }
 
-run().catch(err => console.error('Error running Seneca with Elasticsearch:', err));
+run().catch(err => console.error('Error running Seneca with ElasticSearch:', err));
