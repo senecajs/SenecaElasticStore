@@ -29,7 +29,6 @@ type ElasticSearchStoreOptions = {
 
 function ElasticSearchStore(this: any, options: ElasticSearchStoreOptions) {
   const seneca: any = this;
-  // console.log("Initializing ElasticSearchStore with options:", options); // Debug output
 
   const init = seneca.export('entity/init')
 
@@ -45,7 +44,6 @@ function ElasticSearchStore(this: any, options: ElasticSearchStoreOptions) {
       const index = resolveIndex(ent, options);
       const body = ent.data$(false);
 
-      // Mapping fields according to the schema
       const document = {
         ...body,
         vector: body.vector 
@@ -66,9 +64,7 @@ function ElasticSearchStore(this: any, options: ElasticSearchStoreOptions) {
     },
 
     load: async function (this: any, msg: any, reply: any) {
-      // console.log("Loading document with ID:", msg); // Debug output
       const ent = msg.ent
-      // console.log("Entity on load", ent); // Debug output
       const index = resolveIndex(msg.ent, options);
       try {
         const { body } = await client.get({
@@ -93,8 +89,6 @@ function ElasticSearchStore(this: any, options: ElasticSearchStoreOptions) {
       const vectorFieldName = options.field && options.field.vector ? options.field.vector.name : 'defaultVectorFieldName';
     
       let query: any = { bool: { must: [], filter: [] } };
-
-      console.log("Query:", msg.q);
     
       if (msg.q) {
         Object.keys(msg.q).forEach(key => {
@@ -137,7 +131,7 @@ function ElasticSearchStore(this: any, options: ElasticSearchStoreOptions) {
     remove(this: any, msg: any, reply: any) {
       const ent = msg.ent;
       const idToBeRemoved = msg.q.id;
-      // console.log("Message remove:", msg);
+
       const index = resolveIndex(ent, options);
       client.delete({
         index,
@@ -209,7 +203,6 @@ function resolveIndex(ent: any, options: ElasticSearchStoreOptions): string {
   prefix = '' == prefix || null == prefix ? '' : prefix + '_'
   suffix = '' == suffix || null == suffix ? '' : '_' + suffix
 
-  // TOOD: need ent.canon$({ external: true }) : foo/bar -> foo_bar
   let infix = ent
     .canon$({ string: true })
     .replace(/-\//g, '')

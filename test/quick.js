@@ -5,9 +5,9 @@ const Seneca = require('seneca');
 
 async function run() {
   const seneca = Seneca({ legacy: false })
-    .test() // Test mode to suppress unnecessary logs
-    .use('promisify') // For using promises with Seneca actions
-    .use('entity') // Basic entity handling
+    .test()
+    .use('promisify')
+    .use('entity')
     .use('..', {
       map: {
         'foo/chunk': '*',

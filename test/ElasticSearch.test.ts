@@ -94,7 +94,6 @@ describe('ElasticsearchStore', () => {
     const list1 = await seneca.entity('foo/chunk').list$({ test: 'vector-cat' })
 
     if (!list1.find((n: any) => 'code0' === n.code)) {
-      console.log('ENTERED INSIDE THE IF STATEMENT')
       await seneca
         .entity('foo/chunk')
         .make$()
@@ -136,7 +135,6 @@ describe('ElasticsearchStore', () => {
       vector: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
       code: 'code0',
     })
-    console.log('list3', list3.map((n: any) => ({ ...n })))
     expect(list3.length).toEqual(1)
   }, 22222)
 
@@ -146,7 +144,6 @@ describe('ElasticsearchStore', () => {
 
     clearData(seneca) // Clear all the data before the test
   
-    // Prepare the index with sample data
     await seneca.entity('foo/chunk').make$().data$({
       code: 'code0',
       test: 'knn-search',
