@@ -64,7 +64,6 @@
     "dist"
   ],
   "dependencies": {
-    "@aws-sdk/credential-provider-node": "^3.525.0",
-    "@elastic/elasticsearch": "^7.17.13"
+    "@elastic/elasticsearch": "^8.14.0"
   }
 }
