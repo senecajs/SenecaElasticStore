@@ -1,31 +1,31 @@
-const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '../.env.local') });
+const path = require('path')  
+require('dotenv').config({ path: path.resolve(__dirname, '../.env.local') })  
 
-const { Client } = require('@elastic/elasticsearch');
+const { Client } = require('@elastic/elasticsearch')  
 
 async function run() {
-  console.log('ElasticSearch node URL:', process.env.ELASTICSEARCH_NODE);
+  console.log('ElasticSearch node URL:', process.env.ELASTICSEARCH_NODE)  
 
   const client = new Client({
     node: process.env.ELASTICSEARCH_NODE
-  });
+  })  
 
   try {
     // Check Elasticsearch cluster health
-    const health = await client.cluster.health();
-    console.log('Cluster health:', health);
+    const health = await client.cluster.health()  
+    console.log('Cluster health:', health)  
 
     // Delete the previous vector-index if it exists
     try {
       const deleteResponse = await client.indices.delete({
         index: 'vector-index'
-      });
-      console.log('Previous vector-index deleted:', deleteResponse);
+      })  
+      console.log('Previous vector-index deleted:', deleteResponse)  
     } catch (error) {
       if (error.meta && error.meta.statusCode === 404) {
-        console.log('Previous vector-index does not exist.');
+        console.log('Previous vector-index does not exist.')  
       } else {
-        throw error;
+        throw error  
       }
     }
 
@@ -39,7 +39,7 @@ async function run() {
               "type": "dense_vector",
               "dims": 8,
               "index": true, // Enable k-NN indexing
-              "similarity": "l2_norm" // Specify similarity metric
+              "similarity": "cosine" // Specify similarity metric
             },
             "test": {
               "type": "keyword"
@@ -50,14 +50,14 @@ async function run() {
           }
         }
       }
-    }, { ignore: [400] }); 
+    }, { ignore: [400] })   
 
-    console.log('Index creation response:', indexResponse);
-    console.log('Index with k-NN vector field created or already exists.');
+    console.log('Index creation response:', indexResponse)  
+    console.log('Index with k-NN vector field created or already exists.')  
 
   } catch (error) {
-    console.error('ElasticSearch operation failed:', error);
+    console.error('ElasticSearch operation failed:', error)  
   }
 }
 
-run();
+run()  

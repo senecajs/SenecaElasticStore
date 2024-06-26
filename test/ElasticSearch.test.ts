@@ -56,11 +56,10 @@ describe('ElasticsearchStore', () => {
     const list1 = await seneca
       .entity('foo/chunk')
       .list$({ test: 'insert-remove' })
-    // console.log(list1)
 
     let ent0: any
 
-    if (list1.length === 0) {
+    if (0 === list1.length) {
       ent0 = await seneca
         .entity('foo/chunk')
         .make$()
@@ -127,7 +126,6 @@ describe('ElasticsearchStore', () => {
       directive$: { vector$: { k: 2 } },
       vector: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
     })
-    // console.log('list2', list2.map((n: any) => ({ ...n })))
     expect(1 < list2.length).toEqual(true)
 
     const list3 = await seneca.entity('foo/chunk').list$({
@@ -139,47 +137,156 @@ describe('ElasticsearchStore', () => {
   }, 22222)
 
   test('knn-search', async () => {
-    const seneca = await makeSeneca()
-    await seneca.ready()
+    const seneca = await makeSeneca();
+    await seneca.ready();
 
-    clearData(seneca) // Clear all the data before the test
+    await clearData(seneca); // Clear all the data before the test
   
-    await seneca.entity('foo/chunk').make$().data$({
-      code: 'code0',
-      test: 'knn-search',
-      text: 't01',
-      vector: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
-      directive$: { vector$: true },
-    }).save$()
+    await createChunk(seneca, 'code0', [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]);
+    await createChunk(seneca, 'code1', [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]);
   
-    await seneca.entity('foo/chunk').make$().data$({
-      code: 'code1',
-      test: 'knn-search',
-      text: 't01',
-      vector: [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2],
-      directive$: { vector$: true },
-    }).save$()
-  
-    await new Promise((r) => setTimeout(r, 2222))
+    await new Promise((r) => setTimeout(r, 2222));
   
     // Perform the kNN search
     const list = await seneca.entity('foo/chunk').list$({
       directive$: { vector$: { k: 2 } },
       vector: [0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15],
       test: 'knn-search'
-    })
+    });
   
-    expect(list.length).toBeGreaterThan(0)
-    expect(list.some((item: any) => item.code === 'code0' || item.code === 'code1')).toEqual(true)
-  }, 22222)
+    expect(list.length).toBeGreaterThan(0);
+    expect(list.some((item: any) => 'code' === item.code || 'code1' === item.code)).toEqual(true);
+  }, 22222);
+
+  test('knn-search-sparse-vector', async () => {
+    const seneca = await makeSeneca();
+    await seneca.ready();
+  
+    await clearData(seneca); // Clear all the data before the test
+  
+    await createChunk(seneca, 'code0', [0.1, 0.0, 0.0, 0.0, 0.1, 0.0, 0.0, 0.1]);
+    await createChunk(seneca, 'code1', [0.0, 0.2, 0.0, 0.2, 0.0, 0.2, 0.0, 0.2]);
+  
+    await new Promise((r) => setTimeout(r, 2222));
+  
+    // Perform the kNN search with a sparse vector
+    const list = await seneca.entity('foo/chunk').list$({
+      directive$: { vector$: { k: 2 } },
+      vector: [0.1, 0.0, 0.0, 0.1, 0.0, 0.0, 0.1, 0.0],
+      test: 'knn-search'
+    });
+  
+    expect(list.length).toBeGreaterThan(0);
+    expect(list.some((item: any) => 'code' === item.code || 'code1' === item.code)).toEqual(true);
+  }, 22222);
+
+  test('knn-search-no-results', async () => {
+    const seneca = await makeSeneca();
+    await seneca.ready();
+  
+    await clearData(seneca); // Clear all the data before the test
+    
+    await createChunk(seneca, 'code0', [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]);
+    await createChunk(seneca, 'code1', [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]);
+    
+    await new Promise((r) => setTimeout(r, 2222));
+    
+    // Perform the kNN search with a far away vector
+    const list = await seneca.entity('foo/chunk').list$({
+      directive$: { vector$: { k: 2 } },
+      vector: [0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9],
+      test: 'knn-search'
+    });
+    
+    expect(list.length).toEqual(0);
+  }, 22222);
   
 })
+
+describe('ElasticSearchStore Utilities', () => {
+
+  const utils = ElasticSearchStore['utils'];
+
+  describe('resolveIndex', () => {
+    const resolveIndex = utils.resolveIndex;
+
+    test('should resolve index correctly', () => {
+      const seneca = makeSeneca();
+      const ent0 = seneca.make('foo');
+      const ent1 = seneca.make('foo/bar');
+
+      expect(resolveIndex(ent0, { index: {} })).toEqual('foo');
+      expect(resolveIndex(ent0, { index: { exact: 'qaz' } })).toEqual('qaz');
+      expect(resolveIndex(ent1, { index: {} })).toEqual('foo_bar');
+      expect(resolveIndex(ent1, { index: { prefix: 'p0', suffix: 's0' } })).toEqual('p0_foo_bar_s0');
+      expect(resolveIndex(ent1, {
+        index: { map: { '-/foo/bar': 'FOOBAR' }, prefix: 'p0', suffix: 's0' },
+      })).toEqual('FOOBAR');
+    });
+  });
+
+  describe('buildQuery', () => {
+    const buildQuery = utils.buildQuery;
+
+    test('should build a query object excluding the vector key', () => {
+      const cleanedQuery = {
+        field1: 'value1',
+        field2: 'value2',
+        vector: [0.1, 0.2],
+      };
+      const expectedQuery = {
+        bool: {
+          must: [],
+          filter: [
+            { term: { field1: 'value1' } },
+            { term: { field2: 'value2' } },
+          ],
+        },
+      };
+      const result = buildQuery(cleanedQuery);
+      expect(result).toEqual(expectedQuery);
+    });
+  });
+
+  describe('isKnnSearch', () => {
+    const isKnnSearch = utils.isKnnSearch;
+
+    test('should return true if query contains directive$ and vector$', () => {
+      const query = {
+        directive$: { vector$: { k: 10 } },
+        vector: [0.1, 0.2],
+      };
+      const result = isKnnSearch(query);
+      expect(result).toBe(true);
+    });
+
+    test('should return false if query does not contain directive$ or vector$', () => {
+      const query = {
+        directive$: {},
+        vector: [0.1, 0.2],
+      };
+      const result = isKnnSearch(query);
+      expect(result).toBe(false);
+    });
+  });
+
+});
 
 async function clearData(seneca: any) {
   const list = await seneca.entity('foo/chunk').list$()
   for (const doc of list) {
     await seneca.entity('foo/chunk').remove$(doc.id)
   }
+}
+
+async function createChunk(seneca: any, code: string, vector: number[]) {
+  await seneca.entity('foo/chunk').make$().data$({
+    code,
+    test: 'knn-search',
+    text: 't01',
+    vector,
+    directive$: { vector$: true },
+  }).save$();
 }
 
 function makeSeneca() {
