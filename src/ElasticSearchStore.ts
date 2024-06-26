@@ -236,7 +236,7 @@ async function executeKnnSearch(client: any, index: any, q: any, query: any) {
 
   const { hits } = knnResponse
   return hits.hits
-    .filter((hit: any) =>  0.5 <= hit._score) // Adjust the threshold based on your similarity measure
+    .filter((hit: any) =>  0.5 <= hit._score) // We could adjust this threshold, check after
     .map((hit: any) => ({ id: hit._id, ...hit._source }))
 }
 
