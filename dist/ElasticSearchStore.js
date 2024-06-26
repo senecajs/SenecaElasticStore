@@ -4,7 +4,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const elasticsearch_1 = require("@elastic/elasticsearch");
 function ElasticSearchStore(options) {
     const seneca = this;
-    // console.log("Initializing ElasticSearchStore with options:", options); // Debug output
     const init = seneca.export('entity/init');
     let client;
     let desc = 'ElasticSearchStore';
@@ -14,146 +13,95 @@ function ElasticSearchStore(options) {
             const ent = msg.ent;
             const index = resolveIndex(ent, options);
             const body = ent.data$(false);
-            // Mapping fields according to the schema
             const document = {
                 ...body,
-                vector: body.vector
+                vector: body.vector,
             };
             try {
-                const { body: result } = await client.index({
+                const result = await client.index({
                     index,
-                    body: document,
+                    document,
                     id: ent.id || undefined,
-                    refresh: 'wait_for'
+                    refresh: 'wait_for',
                 });
-                ent.id = result._id;
-                reply(null, ent);
+                if (result && result._id) {
+                    ent.id = result._id;
+                    reply(null, ent);
+                }
+                else {
+                    reply(new Error('Document creation/update failed: missing _id'));
+                }
             }
             catch (err) {
+                console.error('Error in save function:', err);
                 reply(err);
             }
         },
         load: async function (msg, reply) {
-            // console.log("Loading document with ID:", msg); // Debug output
             const ent = msg.ent;
-            // console.log("Entity on load", ent); // Debug output
             const index = resolveIndex(msg.ent, options);
             try {
-                const { body } = await client.get({
+                const response = await client.get({
                     index,
-                    id: msg.q.id
+                    id: msg.q.id,
                 });
-                if (body.found) {
-                    ent.data$(body._source);
-                    ent.id = body._id;
-                    reply(ent);
+                if (response && response.found) {
+                    ent.data$(response._source);
+                    ent.id = response._id;
+                    reply(null, ent);
                 }
                 else {
                     reply(null, null);
                 }
             }
             catch (err) {
-                console.error("Failed to load document:", err);
+                console.error('Failed to load document:', err);
                 reply(err);
             }
         },
         list: async function (msg, reply) {
+            let q = msg.q;
+            let cq = seneca.util.clean(q); // removes all properties ending in '$'
             const index = resolveIndex(msg.ent, options);
-            const vectorFieldName = options.field && options.field.vector ? options.field.vector.name : 'defaultVectorFieldName';
-            let query = { bool: { must: [], filter: [] } };
-            console.log("Query:", msg.q);
-            if (msg.q) {
-                Object.keys(msg.q).forEach(key => {
-                    if (key !== 'directive$' && key !== 'vector') {
-                        query.bool.filter.push({ term: { [key]: msg.q[key] } });
-                    }
-                });
-            }
-            if (msg.directive$ && msg.directive$.vector$) {
-                query.bool.must.push({
-                    knn: {
-                        field: vectorFieldName,
-                        query_vector: msg.vector,
-                        k: msg.directive$.vector$.k,
-                        num_candidates: 100
-                    }
-                });
-            }
-            else {
-                query.bool.must.push({ match_all: {} });
-            }
-            try {
-                const { body } = await client.search({
-                    index,
-                    body: { query }
-                });
-                const results = body.hits.hits.map((hit) => ({
-                    id: hit._id,
-                    ...hit._source
-                }));
-                reply(null, results);
-            }
-            catch (err) {
-                console.error("Error in listing documents:", err);
-                reply(err);
-            }
-        },
-        // list: async function (this: any, msg: any, reply: any) {
-        //   const index = resolveIndex(msg.ent, options);
-        //   const vectorFieldName = options.field && options.field.vector ? options.field.vector.name : 'defaultVectorFieldName';
-        //   let query: any = { bool: { must: [], filter: [] } };
-        //   if (msg.q) {
-        //     Object.keys(msg.q).forEach(key => {
-        //       if (key !== 'directive$' && key !== 'vector') {
-        //         query.bool.filter.push({ term: { [key]: msg.q[key] } });
-        //       }
-        //     });
-        //   }
-        //   if (msg.directive$ && msg.directive$.vector$) {
-        //     query.bool.must.push({
-        //       knn: {
-        //         field: vectorFieldName,
-        //         query_vector: msg.vector,
-        //         k: msg.directive$.vector$.k,
-        //         num_candidates: 100
-        //       }
-        //     });
-        //   } else {
-        //     query.bool.must.push({ match_all: {} });
-        //   }
-        //   try {
-        //     const { body } = await client.search({
-        //       index,
-        //       body: { query }
-        //     });
-        //     const results = body.hits.hits.map((hit: any) => ({
-        //       id: hit._id,
-        //       ...hit._source
-        //     }));
-        //     reply(null, results);
-        //   } catch (err) {
-        //     console.error("Error in listing documents:", err);
-        //     reply(err);
-        //   }
-        // },         
-        remove(msg, reply) {
-            const ent = msg.ent;
-            const idToBeRemoved = msg.q.id;
-            // console.log("Message remove:", msg);
-            const index = resolveIndex(ent, options);
-            client.delete({
-                index,
-                id: idToBeRemoved,
-                refresh: 'wait_for'
-            }, (err) => {
-                if (err) {
-                    console.error("Error in removing document:", err);
+            const query = buildQuery(cq);
+            // Check if the query includes a kNN search directive
+            if (isKnnSearch(q)) {
+                try {
+                    const knnResults = await executeKnnSearch(client, index, q, query);
+                    reply(null, knnResults);
+                }
+                catch (err) {
+                    console.error('Error in kNN search:', err);
                     reply(err);
                 }
-                else {
-                    reply(null, ent);
+            }
+            else {
+                try {
+                    const searchResults = await executeStandardSearch(client, index, query);
+                    reply(null, searchResults);
                 }
-            });
+                catch (err) {
+                    console.error('Error in listing documents:', err);
+                    reply(err);
+                }
+            }
+        },
+        remove: async function (msg, reply) {
+            const ent = msg.ent;
+            const idToBeRemoved = msg.q.id;
+            const index = resolveIndex(ent, options);
+            try {
+                await client.delete({
+                    index,
+                    id: idToBeRemoved,
+                    refresh: 'wait_for',
+                });
+                reply(null, ent);
+            }
+            catch (err) {
+                console.error('Error in removing document:', err);
+                reply(err);
+            }
         },
         close: function (_msg, reply) {
             this.log.debug('close', desc);
@@ -170,11 +118,12 @@ function ElasticSearchStore(options) {
     seneca.prepare(async function () {
         try {
             client = new elasticsearch_1.Client({
-                node: options.elasticsearch.node
+                node: options.elasticsearch.node,
+                auth: options.auth,
             });
         }
         catch (error) {
-            console.error("Failed to initialize ElasticSearch client:", error);
+            console.error('Failed to initialize ElasticSearch client:', error);
         }
     });
     return {
@@ -201,12 +150,44 @@ function resolveIndex(ent, options) {
     let suffix = indexOpts.suffix;
     prefix = '' == prefix || null == prefix ? '' : prefix + '_';
     suffix = '' == suffix || null == suffix ? '' : '_' + suffix;
-    // TOOD: need ent.canon$({ external: true }) : foo/bar -> foo_bar
     let infix = ent
         .canon$({ string: true })
         .replace(/-\//g, '')
         .replace(/\//g, '_');
     return prefix + infix + suffix;
+}
+function buildQuery(cleanedQuery) {
+    const boolQuery = { must: [], filter: [] };
+    Object.keys(cleanedQuery).forEach((key) => {
+        if ('vector' !== key) {
+            boolQuery.filter.push({ term: { [key]: cleanedQuery[key] } });
+        }
+    });
+    return { bool: boolQuery };
+}
+function isKnnSearch(query) {
+    return !!(query.directive$ && query.directive$.vector$ && query.vector);
+}
+async function executeKnnSearch(client, index, q, query) {
+    const knnResponse = await client.knnSearch({
+        index,
+        knn: {
+            field: 'vector',
+            query_vector: q.vector,
+            k: q.directive$.vector$.k || 10,
+            num_candidates: 100,
+        },
+        filter: query.bool.filter.length ? query : undefined,
+    });
+    const { hits } = knnResponse;
+    return hits.hits
+        .filter((hit) => 0.5 <= hit._score) // Adjust the threshold based on your similarity measure
+        .map((hit) => ({ id: hit._id, ...hit._source }));
+}
+async function executeStandardSearch(client, index, query) {
+    const response = await client.search({ index, query });
+    const { hits } = response;
+    return hits.hits.map((hit) => ({ id: hit._id, ...hit._source }));
 }
 // Default options.
 const defaults = {
@@ -231,11 +212,11 @@ const defaults = {
     },
     elasticsearch: {
         node: 'http://localhost:9200',
-    }
+    },
 };
 Object.assign(ElasticSearchStore, {
     defaults,
-    utils: { resolveIndex },
+    utils: { resolveIndex, buildQuery, isKnnSearch, executeKnnSearch, executeStandardSearch },
 });
 exports.default = ElasticSearchStore;
 if ('undefined' !== typeof module) {

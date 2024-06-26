@@ -29,6 +29,10 @@ type ElasticSearchStoreOptions = {
     elasticsearch: {
         node: string;
     };
+    auth?: {
+        username: string;
+        password: string;
+    };
 };
 declare function ElasticSearchStore(this: any, options: ElasticSearchStoreOptions): {
     name: string;
