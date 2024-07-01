@@ -234,10 +234,13 @@ async function executeKnnSearch(client: any, index: any, q: any, query: any) {
     filter: query.bool.filter.length ? query : undefined,
   })
 
-  const { hits } = knnResponse
-  return hits.hits
-    .filter((hit: any) =>  0.5 <= hit._score) // We could adjust this threshold, check after
-    .map((hit: any) => ({ id: hit._id, ...hit._source }))
+    const { hits } = knnResponse
+    return hits.hits.map((hit: any) => ({
+      id: hit._id,
+      ...hit._source,
+      custom$: { score: hit._score },
+    }))
+    
 }
 
 async function executeStandardSearch(client: any, index: any, query: any) {
