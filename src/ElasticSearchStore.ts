@@ -99,6 +99,7 @@ function ElasticSearchStore(this: any, options: ElasticSearchStoreOptions) {
     list: async function (this: any, msg: any, reply: any) {
       let q = msg.q
       let cq = seneca.util.clean(q) // removes all properties ending in '$'
+      let ent = msg.ent
       const index = resolveIndex(msg.ent, options)
 
       const query = buildQuery(cq)
@@ -106,7 +107,7 @@ function ElasticSearchStore(this: any, options: ElasticSearchStoreOptions) {
       // Check if the query includes a kNN search directive
       if (isKnnSearch(q)) {
         try {
-          const knnResults = await executeKnnSearch(client, index, q, query)
+          const knnResults = await executeKnnSearch(client, index, q, query, ent)
           reply(null, knnResults)
         } catch (err) {
           console.error('Error in kNN search:', err)
@@ -118,6 +119,7 @@ function ElasticSearchStore(this: any, options: ElasticSearchStoreOptions) {
             client,
             index,
             query,
+            ent
           )
           reply(null, searchResults)
         } catch (err) {
@@ -222,7 +224,7 @@ function isKnnSearch(query: any) {
   return !!(query.directive$ && query.directive$.vector$ && query.vector)
 }
 
-async function executeKnnSearch(client: any, index: any, q: any, query: any) {
+async function executeKnnSearch(client: any, index: any, q: any, query: any, ent: any) {
   const knnResponse = await client.knnSearch({
     index,
     knn: {
@@ -235,18 +237,25 @@ async function executeKnnSearch(client: any, index: any, q: any, query: any) {
   })
 
     const { hits } = knnResponse
-    return hits.hits.map((hit: any) => ({
-      id: hit._id,
-      ...hit._source,
-      custom$: { score: hit._score },
-    }))
+    return hits.hits.map((hit: any) => {
+      let item = ent.make$().data$(hit._source)
+      item.custom$ = { score: hit._score }
+      item.id = hit._id
+      return item
+    })
     
 }
 
-async function executeStandardSearch(client: any, index: any, query: any) {
+async function executeStandardSearch(client: any, index: any, query: any, ent: any) {
   const response = await client.search({ index, query })
   const { hits } = response
-  return hits.hits.map((hit: any) => ({ id: hit._id, ...hit._source }))
+
+  return hits.hits.map((hit: any) => {
+    let item = ent.make$().data$(hit._source)
+    item.custom$ = { score: hit._score }
+    item.id = hit._id
+    return item
+  })
 }
 
 // Default options.
