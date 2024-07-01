@@ -180,9 +180,11 @@ async function executeKnnSearch(client, index, q, query) {
         filter: query.bool.filter.length ? query : undefined,
     });
     const { hits } = knnResponse;
-    return hits.hits
-        .filter((hit) => 0.5 <= hit._score) // Adjust the threshold based on your similarity measure
-        .map((hit) => ({ id: hit._id, ...hit._source }));
+    return hits.hits.map((hit) => ({
+        id: hit._id,
+        ...hit._source,
+        custom$: { score: hit._score },
+    }));
 }
 async function executeStandardSearch(client, index, query) {
     const response = await client.search({ index, query });
