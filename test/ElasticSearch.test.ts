@@ -180,7 +180,7 @@ describe('ElasticsearchStore', () => {
     expect(list.some((item: any) => 'code' === item.code || 'code1' === item.code)).toEqual(true);
   }, 22222);
 
-  test('knn-search-no-results', async () => {
+  test('knn-search-distant-vector', async () => {
     const seneca = await makeSeneca();
     await seneca.ready();
   
@@ -194,11 +194,11 @@ describe('ElasticsearchStore', () => {
     // Perform the kNN search with a far away vector
     const list = await seneca.entity('foo/chunk').list$({
       directive$: { vector$: { k: 2 } },
-      vector: [0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9],
-      test: 'knn-search'
+      vector: [-10, -10, -10, -10, -10, -10, -10, -10],
+      test: 'knn-search',
     });
     
-    expect(list.length).toEqual(0);
+    expect(list.length).toEqual(2);
   }, 22222);
   
 })

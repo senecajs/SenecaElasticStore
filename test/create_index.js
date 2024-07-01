@@ -39,7 +39,12 @@ async function run() {
               "type": "dense_vector",
               "dims": 8,
               "index": true, // Enable k-NN indexing
-              "similarity": "cosine" // Specify similarity metric
+              "similarity": "cosine", // Specify similarity metric
+              "index_options": {
+                "type": "hnsw",
+                "m": 16,
+                "ef_construction": 512
+              }
             },
             "test": {
               "type": "keyword"
