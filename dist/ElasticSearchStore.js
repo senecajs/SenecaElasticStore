@@ -25,6 +25,7 @@ function ElasticSearchStore(options) {
                     refresh: 'wait_for',
                 });
                 if (result && result._id) {
+                    ent.data$(result._source);
                     ent.id = result._id;
                     reply(null, ent);
                 }
@@ -62,12 +63,13 @@ function ElasticSearchStore(options) {
         list: async function (msg, reply) {
             let q = msg.q;
             let cq = seneca.util.clean(q); // removes all properties ending in '$'
+            let ent = msg.ent;
             const index = resolveIndex(msg.ent, options);
             const query = buildQuery(cq);
             // Check if the query includes a kNN search directive
             if (isKnnSearch(q)) {
                 try {
-                    const knnResults = await executeKnnSearch(client, index, q, query);
+                    const knnResults = await executeKnnSearch(client, index, q, query, ent);
                     reply(null, knnResults);
                 }
                 catch (err) {
@@ -77,7 +79,7 @@ function ElasticSearchStore(options) {
             }
             else {
                 try {
-                    const searchResults = await executeStandardSearch(client, index, query);
+                    const searchResults = await executeStandardSearch(client, index, query, ent);
                     reply(null, searchResults);
                 }
                 catch (err) {
@@ -168,7 +170,7 @@ function buildQuery(cleanedQuery) {
 function isKnnSearch(query) {
     return !!(query.directive$ && query.directive$.vector$ && query.vector);
 }
-async function executeKnnSearch(client, index, q, query) {
+async function executeKnnSearch(client, index, q, query, ent) {
     const knnResponse = await client.knnSearch({
         index,
         knn: {
@@ -180,16 +182,22 @@ async function executeKnnSearch(client, index, q, query) {
         filter: query.bool.filter.length ? query : undefined,
     });
     const { hits } = knnResponse;
-    return hits.hits.map((hit) => ({
-        id: hit._id,
-        ...hit._source,
-        custom$: { score: hit._score },
-    }));
+    return hits.hits.map((hit) => {
+        let item = ent.make$().data$(hit._source);
+        item.custom$ = { score: hit._score };
+        item.id = hit._id;
+        return item;
+    });
 }
-async function executeStandardSearch(client, index, query) {
+async function executeStandardSearch(client, index, query, ent) {
     const response = await client.search({ index, query });
     const { hits } = response;
-    return hits.hits.map((hit) => ({ id: hit._id, ...hit._source }));
+    return hits.hits.map((hit) => {
+        let item = ent.make$().data$(hit._source);
+        item.custom$ = { score: hit._score };
+        item.id = hit._id;
+        return item;
+    });
 }
 // Default options.
 const defaults = {
