@@ -62,6 +62,7 @@ function ElasticSearchStore(this: any, options: ElasticSearchStoreOptions) {
         })
 
         if (result && result._id) {
+          ent.data$(result._source)
           ent.id = result._id
           reply(null, ent)
         } else {

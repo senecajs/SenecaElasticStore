@@ -70,7 +70,7 @@ describe('ElasticsearchStore', () => {
           directive$: { vector$: true },
         })
         .save$()
-      expect(ent0).toMatchObject({ test: 'insert-remove' })
+      expect(ent0).toMatchObject({ test: 'insert-remove', text: 't01'})
       await new Promise((r) => setTimeout(r, 2222))
     } else {
       ent0 = list1[0]
@@ -200,6 +200,41 @@ describe('ElasticsearchStore', () => {
     
     expect(list.length).toEqual(2);
   }, 22222);
+
+  test('knn-search-list-reponse-object-check', async () => {
+    const seneca = await makeSeneca();
+    await seneca.ready();
+  
+    await clearData(seneca); // Clear all the data before the test
+    
+    await createChunk(seneca, 'code0', [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]);
+    
+    await new Promise((r) => setTimeout(r, 2222));
+    
+    // Perform the kNN search with a far away vector
+    const list = await seneca.entity('foo/chunk').list$({
+      directive$: { vector$: { k: 2 } },
+      vector: [0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15],
+      test: 'knn-search',
+    });
+    
+    expect(list.length).toEqual(1);
+  }, 22222);
+
+  test('knn-search-load-response-object-check', async () => {
+    const seneca = await makeSeneca();
+    await seneca.ready();
+  
+    await clearData(seneca);
+    
+    const code0 = await createChunk(seneca, 'code0', [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]);
+
+    await new Promise((r) => setTimeout(r, 2222));
+
+    // Perform the kNN search using load$
+    const ent = await seneca.entity('foo/chunk').load$({ id: code0.id, test: 'knn-search'});
+    expect(ent).toMatchObject({ code: 'code0', test: 'knn-search', text: 't01', id: code0.id });
+  }, 22222);
   
 })
 
@@ -280,13 +315,15 @@ async function clearData(seneca: any) {
 }
 
 async function createChunk(seneca: any, code: string, vector: number[]) {
-  await seneca.entity('foo/chunk').make$().data$({
+  const chunk = await seneca.entity('foo/chunk').make$().data$({
     code,
     test: 'knn-search',
     text: 't01',
     vector,
     directive$: { vector$: true },
   }).save$();
+
+  return chunk;
 }
 
 function makeSeneca() {
