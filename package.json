@@ -1,10 +1,10 @@
 {
-  "name": "@seneca/opensearch-store",
+  "name": "@seneca/ElasticStore",
   "version": "0.0.1",
-  "description": "Seneca OpenSearch data storage plugin.",
-  "main": "dist/OpensearchStore.js",
+  "description": "Seneca Elastic data storage plugin.",
+  "main": "dist/ElasticSearchStore.js",
   "type": "commonjs",
-  "types": "dist/OpensearchStore.d.ts",
+  "types": "dist/ElasticSearchStore.d.ts",
   "license": "MIT",
   "author": "Richard Rodger (http://richardrodger.com)",
   "contributors": [
@@ -14,6 +14,7 @@
     "test": "jest --coverage",
     "test-some": "jest -t",
     "test-watch": "jest --coverage --watchAll",
+    "create-index": "node ./test/create_index.js",
     "watch": "tsc -w -d",
     "build": "tsc -d",
     "doc": "seneca-doc -p seneca-entity",
@@ -26,7 +27,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/senecajs/SenecaOpensearchStore"
+    "url": "https://github.com/senecajs/SenecaElasticStore"
   },
   "keywords": [
     "seneca",
@@ -46,10 +47,10 @@
     "@seneca/maintain": "^0.1.0",
     "@types/jest": "^29.5.12",
     "@types/node": "^20.11.24",
+    "dotenv": "^16.4.5",
     "esbuild": "^0.20.1",
     "esbuild-jest": "^0.5.0",
     "jest": "^29.7.0",
-    "dotenv": "^16.4.5",
     "prettier": "^3.2.5",
     "seneca-msg-test": "^4.1.0",
     "seneca-store-test": "^5.2.0",
@@ -63,7 +64,6 @@
     "dist"
   ],
   "dependencies": {
-    "@aws-sdk/credential-provider-node": "^3.525.0",
-    "@opensearch-project/opensearch": "^2.5.0"
+    "@elastic/elasticsearch": "^8.14.0"
   }
 }
